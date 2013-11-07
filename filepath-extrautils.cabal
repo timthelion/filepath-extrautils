@@ -1,0 +1,16 @@
+name:           filepath-extrautils
+version:        0.0.0
+cabal-version:  >=1.2
+build-type:     Simple
+author:         timothy
+
+library
+  hs-source-dirs:  src
+  build-depends:   
+                   base >= 4,
+                   directory >=1.1.0 && <1.2,
+                   unix-compat >=0.4.1 && <0.5,
+                   filepath >=1.3.0 && <1.4
+  ghc-options:     -Wall
+  exposed-modules: System.FilePath.ExtraUtils
+
