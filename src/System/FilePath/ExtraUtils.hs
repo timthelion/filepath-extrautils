@@ -7,11 +7,16 @@ module System.FilePath.ExtraUtils
  ,clipPath
  ,getRealDirectoryContents
  ,getDirectoryContentsRecursive
+ ,getFilesInDirectoryRecursive
  ,getSubDirectoryContentsRecursive
  ,getSubDirectories) where
 
+import "base" Control.Monad
+ (filterM)
+
 import "directory" System.Directory
- (doesDirectoryExist
+ (doesFileExist
+ ,doesDirectoryExist
  ,getDirectoryContents)
 
 import "unix-compat" System.PosixCompat.Files
@@ -23,9 +28,6 @@ import "filepath" System.FilePath
  ,joinPath
  ,splitDirectories
  ,splitPath)
-
-import "base" Control.Monad
- (filterM)
 
 getParentNamedMaybe :: FilePath -> FilePath -> Maybe FilePath
 getParentNamedMaybe = walkUpPathTill
@@ -61,7 +63,7 @@ clipPath path
  $ init
  $ splitPath path
 
--- | Returns paths to all files and directories which are bellow the current directory.  i.e. the contents of this directory, all of it's subdirectories and their subdirectories and so on. 
+-- | Returns relative paths to all files and directories which are bellow the current directory.  i.e. the contents of this directory, all of it's subdirectories and their subdirectories and so on. 
 -- NOTE: does not return the contents of subdirectories which are symlinks.
 getDirectoryContentsRecursive :: FilePath -> IO [FilePath]
 getDirectoryContentsRecursive dir = do
@@ -70,13 +72,14 @@ getDirectoryContentsRecursive dir = do
  contentsOfSubDirs <-
   mapM
      getDirectoryContentsRecursive
-   $ map
-      (\subDir->dir </> subDir)
-      subDirs
+     subDirs
  return
-  $ concat
-  $ (map (\file-> dir </> file) contents)
-    : contentsOfSubDirs
+  $ concat $ contents : contentsOfSubDirs
+
+getFilesInDirectoryRecursive :: FilePath -> IO [FilePath]
+getFilesInDirectoryRecursive dir = do
+ fullContents <- getDirectoryContentsRecursive dir
+ filterM doesFileExist fullContents
 
 -- | List all the files and directories in the subdirectories of a directory.
 getSubDirectoryContentsRecursive :: FilePath -> IO [FilePath]
