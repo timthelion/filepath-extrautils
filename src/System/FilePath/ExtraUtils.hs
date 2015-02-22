@@ -7,7 +7,9 @@ module System.FilePath.ExtraUtils
  ,clipPath
  ,getRealDirectoryContents
  ,getDirectoryContentsRecursive
+ ,getRelativeDirectoryContentsRecursive
  ,getFilesInDirectoryRecursive
+ ,getRelativeFilesInDirectoryRecursive
  ,getSubDirectoryContentsRecursive
  ,getSubDirectories) where
 
@@ -27,7 +29,8 @@ import "filepath" System.FilePath
  ((</>)
  ,joinPath
  ,splitDirectories
- ,splitPath)
+ ,splitPath
+ ,makeRelative)
 
 getParentNamedMaybe :: FilePath -> FilePath -> Maybe FilePath
 getParentNamedMaybe = walkUpPathTill
@@ -63,18 +66,33 @@ clipPath path
  $ init
  $ splitPath path
 
--- | Returns relative paths to all files and directories which are bellow the current directory.  i.e. the contents of this directory, all of it's subdirectories and their subdirectories and so on. 
+-- | Returns full paths to all files and directories which are bellow the current directory.  i.e. the contents of this directory, all of it's subdirectories and their subdirectories and so on. 
+-- NOTE: does not return the contents of subdirectories which are symlinks.
+getRelativeDirectoryContentsRecursive :: FilePath -> IO [FilePath]
+getRelativeDirectoryContentsRecursive dir = do
+  absoluteDirectoryContents <- getDirectoryContentsRecursive dir
+  return $ map (makeRelative dir) absoluteDirectoryContents
+
+getRelativeFilesInDirectoryRecursive :: FilePath -> IO [FilePath]
+getRelativeFilesInDirectoryRecursive dir = do
+  contents <- getDirectoryContentsRecursive dir
+  return $ map (makeRelative dir) contents
+
+
+-- | Returns full paths to all files and directories which are bellow the current directory.  i.e. the contents of this directory, all of it's subdirectories and their subdirectories and so on. 
 -- NOTE: does not return the contents of subdirectories which are symlinks.
 getDirectoryContentsRecursive :: FilePath -> IO [FilePath]
 getDirectoryContentsRecursive dir = do
- contents       <- getDirectoryContents dir
+ contents       <- getRealDirectoryContents dir
  subDirs        <- getSubDirectories    dir
+ let fullPathsOfSubDirs = map (\ subDir -> dir </> subDir) subDirs
+     fullPathsOfContents = map (\ containedFileOrDirectory -> dir </> containedFileOrDirectory) contents
  contentsOfSubDirs <-
   mapM
      getDirectoryContentsRecursive
-     subDirs
+     fullPathsOfSubDirs
  return
-  $ concat $ contents : contentsOfSubDirs
+  $ concat (fullPathsOfContents : contentsOfSubDirs)
 
 getFilesInDirectoryRecursive :: FilePath -> IO [FilePath]
 getFilesInDirectoryRecursive dir = do
